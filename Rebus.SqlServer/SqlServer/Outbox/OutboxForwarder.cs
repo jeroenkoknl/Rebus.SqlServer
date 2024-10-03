@@ -12,6 +12,8 @@ namespace Rebus.SqlServer.Outbox;
 
 class OutboxForwarder : IDisposable, IInitializable
 {
+    internal const int DefaultForwarderIntervalSeconds = 1;
+    
     static readonly Retrier SendRetrier = new(new[]
     {
         TimeSpan.FromSeconds(0.1),
@@ -39,11 +41,15 @@ class OutboxForwarder : IDisposable, IInitializable
     readonly ILog _logger;
 
     public OutboxForwarder(IAsyncTaskFactory asyncTaskFactory, IRebusLoggerFactory rebusLoggerFactory, IOutboxStorage outboxStorage, ITransport transport)
+        : this(asyncTaskFactory, rebusLoggerFactory, outboxStorage, transport, DefaultForwarderIntervalSeconds)
+    {}
+    
+    public OutboxForwarder(IAsyncTaskFactory asyncTaskFactory, IRebusLoggerFactory rebusLoggerFactory, IOutboxStorage outboxStorage, ITransport transport, int forwarderIntervalSeconds)
     {
         if (asyncTaskFactory == null) throw new ArgumentNullException(nameof(asyncTaskFactory));
         _outboxStorage = outboxStorage;
         _transport = transport;
-        _forwarder = asyncTaskFactory.Create("OutboxForwarder", RunForwarder, intervalSeconds: 1);
+        _forwarder = asyncTaskFactory.Create("OutboxForwarder", RunForwarder, intervalSeconds: forwarderIntervalSeconds);
         _cleaner = asyncTaskFactory.Create("OutboxCleaner", RunCleaner, intervalSeconds: 120);
         _logger = rebusLoggerFactory.GetLogger<OutboxForwarder>();
     }
